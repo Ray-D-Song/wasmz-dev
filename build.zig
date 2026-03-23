@@ -142,6 +142,24 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
+    const trap_mod = b.createModule(.{
+        .root_source_file = b.path("src/core/trap.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const helper_mod = b.createModule(.{
+        .root_source_file = b.path("src/core/value/helper.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "trap", .module = trap_mod },
+        },
+    });
+    const helper_tests = b.addTest(.{
+        .root_module = helper_mod,
+    });
+    test_step.dependOn(&b.addRunArtifact(helper_tests).step);
+
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
     // The Zig build system is entirely implemented in userland, which means

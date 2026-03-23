@@ -1,5 +1,5 @@
 const std = @import("std");
-const trap = @import("../trap.zig");
+const trap = @import("trap");
 
 pub const TruncateError = error{
     NaN,
@@ -24,7 +24,12 @@ pub fn tryTruncateInto(comptime T: type, value: anytype) TruncateError!T {
 
     const truncated = @trunc(value);
 
-    if (truncated < std.math.minInt(T) or truncated > std.math.maxInt(T)) {
+    // Use float-cast boundaries to avoid precision loss when comparing:
+    // e.g. maxInt(i32)=2147483647 rounds up to 2147483648.0 in f32,
+    // so `truncated > maxInt(T)` would miss 2147483648.0 itself.
+    const float_min: Src = @floatFromInt(std.math.minInt(T));
+    const float_max: Src = @floatFromInt(@as(i128, std.math.maxInt(T)) + 1);
+    if (truncated < float_min or truncated >= float_max) {
         return TruncateError.OutOfRange;
     }
 
@@ -49,9 +54,11 @@ pub fn truncateSaturateInto(comptime T: type, value: anytype) T {
 
     const truncated = @trunc(value);
 
-    if (truncated < std.math.minInt(T)) {
+    const float_min: Src = @floatFromInt(std.math.minInt(T));
+    const float_max: Src = @floatFromInt(@as(i128, std.math.maxInt(T)) + 1);
+    if (truncated < float_min) {
         return std.math.minInt(T);
-    } else if (truncated > std.math.maxInt(T)) {
+    } else if (truncated >= float_max) {
         return std.math.maxInt(T);
     } else {
         return @intFromFloat(truncated);
@@ -313,4 +320,45 @@ pub fn copySign(lhs: anytype, rhs: @TypeOf(lhs)) @TypeOf(lhs) {
     const T = @TypeOf(lhs);
     comptime ensureFloat(T);
     return std.math.copysign(lhs, rhs);
+}
+
+// Float only function
+pub fn floatMulAdd(lhs: anytype, mid: @TypeOf(lhs), rhs: @TypeOf(lhs)) @TypeOf(lhs) {
+    const T = @TypeOf(lhs);
+    comptime ensureFloat(T);
+    return @mulAdd(T, lhs, mid, rhs);
+}
+
+test "wasm_float_min_regression" {
+    try std.testing.expectEqual(@as(u32, 0x8000_0000), @as(u32, @bitCast(min(@as(f32, -0.0), @as(f32, 0.0)))));
+    try std.testing.expectEqual(@as(u32, 0x8000_0000), @as(u32, @bitCast(min(@as(f32, 0.0), @as(f32, -0.0)))));
+}
+
+test "wasm_float_max_regression" {
+    try std.testing.expectEqual(@as(u32, 0x0000_0000), @as(u32, @bitCast(max(@as(f32, -0.0), @as(f32, 0.0)))));
+    try std.testing.expectEqual(@as(u32, 0x0000_0000), @as(u32, @bitCast(max(@as(f32, 0.0), @as(f32, -0.0)))));
+}
+
+test "copysign_regression" {
+    const nan_neg: f32 = @bitCast(@as(u32, 0xFFC00000));
+    try std.testing.expect(std.math.isNan(nan_neg));
+    try std.testing.expectEqual(@as(u32, 0x7FC00000), @as(u32, @bitCast(copySign(nan_neg, @as(f32, 0.0)))));
+}
+
+test "try_truncate_into_f32_i32_boundary" {
+    // 2^31 as f32 must overflow i32
+    try std.testing.expectError(error.OutOfRange, tryTruncateInto(i32, @as(f32, 2147483648.0)));
+    // Largest representable f32 that truncates within i32 range (2^31 - 128)
+    try std.testing.expectEqual(@as(i32, 2147483520), try tryTruncateInto(i32, @as(f32, 2147483520.0)));
+    // NaN must error
+    try std.testing.expectError(error.NaN, tryTruncateInto(i32, std.math.nan(f32)));
+    // -1.0 must overflow u32
+    try std.testing.expectError(error.OutOfRange, tryTruncateInto(u32, @as(f32, -1.0)));
+    // +inf must overflow
+    try std.testing.expectError(error.OutOfRange, tryTruncateInto(i32, std.math.inf(f32)));
+}
+
+test "float_mul_add" {
+    try std.testing.expectEqual(@as(f32, 10.0), floatMulAdd(@as(f32, 2.0), @as(f32, 3.0), @as(f32, 4.0)));
+    try std.testing.expectEqual(@as(f64, 10.0), floatMulAdd(@as(f64, 2.0), @as(f64, 3.0), @as(f64, 4.0)));
 }
