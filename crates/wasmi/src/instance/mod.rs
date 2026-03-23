@@ -32,13 +32,24 @@ mod tests;
 #[derive(Debug)]
 pub struct InstanceEntity {
     initialized: bool,
+    // Deduplicated function signatures, 
+    // used for type checking and fast comparison
     func_types: Arc<[DedupFuncType]>,
-    tables: Box<[Table]>,
+    // Actual function list, used for function calls
     funcs: Box<[Func]>,
+    // Wasm use tables to store references like `funcref`
+    tables: Box<[Table]>,
+    // Wasm linear memory instances
     memories: Box<[Memory]>,
+    // Global variables
     globals: Box<[Global]>,
+    // From the wasm export section, can be Func, Table, Memory or Global
     exports: Map<Box<str>, Extern>,
+    // A batch of data included with the module 
+    // that can be copied to the linear memory of memories at runtime
     data_segments: Box<[DataSegment]>,
+    // Very similar to data_segments 
+    // but stores reference items to be placed in tables at runtime
     elem_segments: Box<[ElementSegment]>,
 }
 
