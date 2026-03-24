@@ -118,7 +118,7 @@ pub const Trap = struct {
         };
     }
 
-    pub fn new(msg: []const u8) Trap {
+    pub fn fromMessage(msg: []const u8) Trap {
         return .{
             .reason = .{ .message = msg },
         };

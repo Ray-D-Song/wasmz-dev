@@ -36,7 +36,7 @@ pub const TypedRawVal = struct {
     ty: ValType,
     value: RawVal,
 
-    pub fn new(ty: ValType, value: RawVal) TypedRawVal {
+    pub fn init(ty: ValType, value: RawVal) TypedRawVal {
         return .{
             .ty = ty,
             .value = value,
