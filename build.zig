@@ -147,12 +147,18 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const raw_mod = b.createModule(.{
+        .root_source_file = b.path("src/core/raw.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const helper_mod = b.createModule(.{
         .root_source_file = b.path("src/core/value/helper.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
             .{ .name = "trap", .module = trap_mod },
+            .{ .name = "raw", .module = raw_mod },
         },
     });
     const helper_tests = b.addTest(.{
