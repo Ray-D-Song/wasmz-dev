@@ -1,4 +1,4 @@
-const ValType = @import("valtype.zig").ValType;
+const ValType = @import("value/type.zig").ValType;
 const RawVal = @import("raw.zig").RawVal;
 const TypedRawVal = @import("typed.zig").TypedRawVal;
 
