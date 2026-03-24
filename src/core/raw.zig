@@ -1,4 +1,5 @@
 const vec = @import("./value/vec.zig");
+const float = @import("./float.zig");
 
 pub const RawVal = struct {
     // The low 64-bits of an [`RawVal`].
@@ -31,6 +32,15 @@ pub const RawVal = struct {
             return @as(f32, @bitCast(bits));
         }
         if (T == f64) return @as(f64, @bitCast(self.low64));
+
+        // Support reading float.F32 and float.F64 wrapper type
+        if (T == float.F32) {
+            const bits: u32 = @truncate(self.low64);
+            return float.F32.fromBits(bits);
+        }
+        if (T == float.F64) {
+            return float.F64.fromBits(self.low64);
+        }
 
         if (T == vec.V128) {
             const bits = (@as(u128, self.high64) << 64) | @as(u128, self.low64);
@@ -105,6 +115,15 @@ pub const RawVal = struct {
         }
         if (T == f64) {
             self.writeLow64(@as(u64, @bitCast(value)));
+            return;
+        }
+
+        if (T == float.F32) {
+            self.writeLow64(@as(u64, value.toBits()));
+            return;
+        }
+        if (T == float.F64) {
+            self.writeLow64(value.toBits());
             return;
         }
 
