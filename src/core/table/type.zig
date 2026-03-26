@@ -42,7 +42,7 @@ pub const TableType = struct {
         return self.index_type.is64();
     }
 
-    pub fn eleTypeMatches(self: TableType, refTy: RefType) TableError!void {
+    pub fn ensureElementTypeMatches(self: TableType, refTy: RefType) TableError!void {
         if (self.element != refTy) {
             return TableError.ElementTypeMismatch;
         }
